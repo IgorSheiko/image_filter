@@ -64,9 +64,23 @@ class ImagesController < ApplicationController
 
   private
     def processing_image(image)
-      f = File.open(image.main_image.path)
-      binding.pry
-      image.processing_image = f
+      avatar = ChunkyPNG::Image.from_file(image.main_image.path)
+      avatar.width.times do |i|
+        avatar.height.times do |j|
+          avatar[i,j] = negative_pixel(avatar[i,j])
+        end
+      end
+      avatar.save('n.png')
+      image.processing_image = Rails.root.join("n.png").open
+      image.save!
+    end
+
+    def negative_pixel(code)
+      color_to_negative(code, 0xff000000, 24) | color_to_negative(code, 0x00ff0000, 16) | color_to_negative(code, 0x0000ff00, 8) | 0xff
+    end
+
+    def color_to_negative(code, mask, shift)
+      (255 - ((code & mask) >> shift)) << shift 
     end
     # Use callbacks to share common setup or constraints between actions.
     def set_image
@@ -75,6 +89,6 @@ class ImagesController < ApplicationController
 
     # Never trust parameters from the scary internet, only allow the white list through.
     def image_params
-      params.require(:image).permit(:main_image)
+      params.require(:image).permit(:main_image, :processing_image, :filter_image)
     end
 end
