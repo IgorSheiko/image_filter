@@ -65,14 +65,33 @@ class ImagesController < ApplicationController
   private
     def processing_image(image)
       avatar = ChunkyPNG::Image.from_file(image.main_image.path)
+      roberts(avatar)
+      avatar = ChunkyPNG::Image.from_file(image.main_image.path)
+      negative(avatar)
+      image.processing_image = Rails.root.join("n.png").open
+      image.filter_image = Rails.root.join("rob.png").open
+      image.save!
+    end
+
+    def roberts(avatar)
+      new_image = avatar
+      (avatar.width - 1).times do |i|
+        (avatar.height - 1).times do |j|
+          tmp1 = avatar[i,j] - avatar[i+1,j+1] + 0xff
+          tmp2 = avatar[i+1,j] - avatar[i,j+1] + 0xff
+          new_image[i, j] = Math.sqrt(tmp1 ** 2 + tmp2 ** 2).to_i
+        end
+      end
+      new_image.save('rob.png')
+    end
+
+    def negative(avatar)
       avatar.width.times do |i|
         avatar.height.times do |j|
           avatar[i,j] = negative_pixel(avatar[i,j])
         end
       end
       avatar.save('n.png')
-      image.processing_image = Rails.root.join("n.png").open
-      image.save!
     end
 
     def negative_pixel(code)
