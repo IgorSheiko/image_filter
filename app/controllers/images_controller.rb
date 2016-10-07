@@ -66,8 +66,8 @@ class ImagesController < ApplicationController
     def processing_image(image)
       avatar = ChunkyPNG::Image.from_file(image.main_image.path)
       roberts(avatar)
-      avatar = ChunkyPNG::Image.from_file(image.main_image.path)
-      negative(avatar)
+      # avatar = ChunkyPNG::Image.from_file(image.main_image.path)
+      # negative(avatar)
       image.processing_image = Rails.root.join("n.png").open
       image.filter_image = Rails.root.join("rob.png").open
       image.save!
@@ -77,14 +77,33 @@ class ImagesController < ApplicationController
       new_image = avatar
       (avatar.width - 1).times do |i|
         (avatar.height - 1).times do |j|
-          tmp1 = avatar[i,j] - avatar[i+1,j+1] + 0xff
-          tmp2 = avatar[i+1,j] - avatar[i,j+1] + 0xff
-          new_image[i, j] = Math.sqrt(tmp1 ** 2 + tmp2 ** 2).to_i
+          tmp1 = mask(avatar[i,j],avatar[i+1,j+1])
+          tmp2 = mask(avatar[i+1,j],avatar[i,j+1])
+          new_image[i, j] = new_pixel(tmp1, tmp2)
         end
       end
       new_image.save('rob.png')
     end
 
+    def mask(pixel1, pixel2)
+      (get_color(pixel1, 0xff000000, 24) - get_color(pixel2, 0xff000000, 24)) << 24| 
+      (get_color(pixel1, 0x00ff0000, 16) - get_color(pixel2, 0x00ff0000, 16)) <<16 | 
+      (get_color(pixel1, 0x0000ff00, 8) - get_color(pixel2, 0x0000ff00, 8)) << 8 | 0xff
+    end
+
+    def new_pixel(pixel1, pixel2)
+      new_color(pixel1, pixel2, 0xff000000, 24) | 
+      new_color(pixel1, pixel2, 0x00ff0000, 16) |
+      new_color(pixel1, pixel2, 0x0000ff00, 8) | 0xff
+    end
+
+    def new_color(pixel1, pixel2, code, shift)
+      correct_color(Math.sqrt(get_color(pixel1, code, shift) ** 2 + get_color(pixel2, code, shift) ** 2).to_i) << shift
+    end
+
+    def correct_color(color)
+      color > 255 ? 255 : color
+    end
     def negative(avatar)
       avatar.width.times do |i|
         avatar.height.times do |j|
@@ -99,7 +118,11 @@ class ImagesController < ApplicationController
     end
 
     def color_to_negative(code, mask, shift)
-      (255 - ((code & mask) >> shift)) << shift 
+      (255 - get_color(code, mask, shift)) << shift 
+    end
+
+    def get_color(code, mask, shift)
+      (code & mask) >> shift
     end
     # Use callbacks to share common setup or constraints between actions.
     def set_image
