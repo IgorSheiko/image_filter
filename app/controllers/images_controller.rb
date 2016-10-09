@@ -64,13 +64,31 @@ class ImagesController < ApplicationController
 
   private
     def processing_image(image)
-      avatar = ChunkyPNG::Image.from_file(image.main_image.path)
+      thumb = Magick::Image.read(image.main_image.path).first
+      thumb.format = "PNG"
+      thumb.write("png.png")
+      avatar = ChunkyPNG::Image.from_file("png.png")
       roberts(avatar)
-      # avatar = ChunkyPNG::Image.from_file(image.main_image.path)
-      # negative(avatar)
+      avatar = ChunkyPNG::Image.from_file("png.png")
+      negative(avatar)
       image.processing_image = Rails.root.join("n.png").open
       image.filter_image = Rails.root.join("rob.png").open
+      image.brightness = brightness_calculate(avatar)
       image.save!
+    end
+
+    def brightness_calculate(avatar)
+      array_brightness = []
+       (avatar.width - 1).times do |i|
+        (avatar.height - 1).times do |j|
+          brightness = 0.3*get_color(avatar[i,j], 0xff000000, 24) + 
+          0.59*get_color(avatar[i,j], 0x00ff0000, 16) + 
+          0.11*get_color(avatar[i,j], 0x0000ff00, 8)
+          array_brightness[brightness.to_i] = 0 unless array_brightness[brightness.to_i] 
+          array_brightness[brightness.to_i] += 1
+        end
+      end
+      array_brightness.each_with_index.map{|q,i| [i,q]}
     end
 
     def roberts(avatar)
@@ -86,19 +104,21 @@ class ImagesController < ApplicationController
     end
 
     def mask(pixel1, pixel2)
-      (get_color(pixel1, 0xff000000, 24) - get_color(pixel2, 0xff000000, 24)) << 24| 
-      (get_color(pixel1, 0x00ff0000, 16) - get_color(pixel2, 0x00ff0000, 16)) <<16 | 
-      (get_color(pixel1, 0x0000ff00, 8) - get_color(pixel2, 0x0000ff00, 8)) << 8 | 0xff
+      [(get_color(pixel1, 0xff000000, 24) - get_color(pixel2, 0xff000000, 24)), 
+      (get_color(pixel1, 0x00ff0000, 16) - get_color(pixel2, 0x00ff0000, 16)), 
+      (get_color(pixel1, 0x0000ff00, 8) - get_color(pixel2, 0x0000ff00, 8))] 
     end
 
     def new_pixel(pixel1, pixel2)
-      new_color(pixel1, pixel2, 0xff000000, 24) | 
-      new_color(pixel1, pixel2, 0x00ff0000, 16) |
-      new_color(pixel1, pixel2, 0x0000ff00, 8) | 0xff
+      array_color = []
+      3.times do |i|
+        array_color[i] = correct_color(Math.sqrt(pixel1[i] ** 2 + pixel2[i] ** 2).to_i) 
+      end
+      array_color[0] << 24 | array_color[1] << 16 | array_color[2] << 8 | 0xff
     end
 
     def new_color(pixel1, pixel2, code, shift)
-      correct_color(Math.sqrt(get_color(pixel1, code, shift) ** 2 + get_color(pixel2, code, shift) ** 2).to_i) << shift
+      (correct_color(Math.sqrt(get_color(pixel1, code, shift) ** 2 + get_color(pixel2, code, shift) ** 2).to_i)) << shift
     end
 
     def correct_color(color)

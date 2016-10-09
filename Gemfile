@@ -26,6 +26,7 @@ gem 'pry'
 gem 'bitmap'
 gem 'rmagick'
 gem 'chunky_png'
+gem 'chartkick'
 # Use ActiveModel has_secure_password
 # gem 'bcrypt', '~> 3.1.7'
 

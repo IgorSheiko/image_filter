@@ -11,4 +11,4 @@
 /log/*
 !/log/.keep
 /tmp
-/public/uploads/image/
+/public/uploads/

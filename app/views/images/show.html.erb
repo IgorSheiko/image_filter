@@ -1,4 +1,23 @@
 <p id="notice"><%= notice %></p>
-
+<table>
+<tr>
+	<td><%=image_tag(@image.main_image)%></td>
+	<td width="600"><%= column_chart @image.brightness %></td>
+</tr>
+<tr>
+	<td><%=image_tag(@image.processing_image)%></td>
+	<td></td>
+</tr>
+<tr>
+	<td><%=image_tag(@image.filter_image)%></td>
+	<td></td>
+</tr>
 <%= link_to 'Edit', edit_image_path(@image) %> |
 <%= link_to 'Back', images_path %>
+</table>
+<!-- 
+<script>
+  $(document).ready(function(){
+  	hist(<%=@image.brightness%>);
+    });
+</script> -->
